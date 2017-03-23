@@ -26,6 +26,7 @@ public:
     bool Run();
 
     int GetDataCluster(int DataIndex);
+    double* GetCenter();
 
 private:
     class Impl;

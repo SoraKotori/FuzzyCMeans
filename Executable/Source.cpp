@@ -113,7 +113,7 @@ bool csv_read(_FileName&& __filename, vector<_Ty>& __data, _Size& __dimension, _
 }
 
 template<typename _FileName, typename _Ty, typename _Size>
-bool csv_write(const _FileName& __filename, const vector<_Ty>& __data, const vector<_Size>& __data_cluster, _Size __cluster)
+bool csv_write(const _FileName& __filename, const vector<_Ty>& __center, const vector<_Ty>& __data, const vector<_Size>& __data_cluster, _Size __cluster)
 {
     typedef typename vector<_Ty>::size_type size_type;
     size_type __line = static_cast<size_type>(__data_cluster.size());
@@ -121,9 +121,7 @@ bool csv_write(const _FileName& __filename, const vector<_Ty>& __data, const vec
 
     ostringstream __cluster_string;
     __cluster_string << __cluster;
-
     path __file_directories(__cluster_string.str());
-    path __file_path = __file_directories / __filename;
 
     bool bResult = is_directory(__file_directories);
     if (!bResult)
@@ -135,34 +133,82 @@ bool csv_write(const _FileName& __filename, const vector<_Ty>& __data, const vec
         }
     }
 
+    path __file_path = __file_directories / "Center.csv";
+    ofstream __file_center(__file_path);
+    if (!__file_center)
+    {
+        return false;
+    }
+
+    __file_path = __file_directories / __filename;
     ofstream __file(__file_path);
     if (!__file)
     {
         return false;
     }
 
-#ifdef ICAL
+    vector<ofstream> __file_cluster(__cluster);
+    for (_Size __cluster_index = 0; __cluster_index < __cluster; __cluster_index++)
+    {
+        __cluster_string.seekp(0, ios::beg);
+        __cluster_string << __cluster_index << ".csv";
+        __file_path = __file_directories / __cluster_string.str();
+
+        __file_cluster[__cluster_index] = ofstream(__file_path);
+        if (!__file_cluster[__cluster_index])
+        {
+            return false;
+        }
+    }
+
+    __file_center << "id";
     __file << "id";
     for (size_type __dimension_index = 0; __dimension_index < __dimension; __dimension_index++)
     {
-        __file << ',' << "dim" << __dimension_index + 1;
+        auto __dimension_index_add = __dimension_index + 1;
+
+        __file_center << ',' << "dim" << __dimension_index_add;
+        __file << ',' << "dim" << __dimension_index_add;
     }
+    __file_center << endl;;
     __file << ',' << "cid" << endl;;
+
+    auto __center_begin = __center.begin();
+    for (_Size __cluster_index = 0; __cluster_index < __cluster; __cluster_index++)
+    {
+        auto& __file_cluster_index = __file_cluster[__cluster_index];
+        
+        __file_center << __cluster_index + 1;
+        __file_cluster_index << "id";
+        for (size_type __dimension_index = 0; __dimension_index < __dimension; __dimension_index++)
+        {
+            __file_center << ',' << *__center_begin++;
+            __file_cluster_index << ',' << "dim" << __dimension_index + 1;
+        }
+        __file_center << endl;;
+        __file_cluster_index << ',' << "cid" << endl;;
+    }
 
     auto __data_begin = __data.begin();
     for (size_type __data_index = 0; __data_index < __line; __data_index++)
     {
-        __file << __data_index + 1;
+        auto __cluster_index = __data_cluster[__data_index];
+        auto& __file_cluster_index = __file_cluster[__cluster_index];
+
+        auto __data_index_add = __data_index + 1;
+        __file << __data_index_add;
+        __file_cluster_index << __data_index_add;
 
         for (size_type __dimension_index = 0; __dimension_index < __dimension; __dimension_index++)
         {
-            __file << ',' << *__data_begin++;
-        }
-        __file  << ',' << __data_cluster[__data_index] << endl;
-    }
-#else
+            auto __data_value = *__data_begin++;
 
-#endif
+            __file << ',' << __data_value;
+            __file_cluster_index << ',' << __data_value;
+        }
+        __file << ',' << __cluster_index << endl;
+        __file_cluster_index << ',' << __cluster_index << endl;
+    }
 
     return true;
 }
@@ -197,6 +243,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    srand(time(NULL));
     FuzzyCMeans _FCM;
     _bResult = _FCM.Create(_Data.data(), _Dimension, _DataSize, _kCluster, _mWeight, _Epsilon, FuzzyCMeans::EnumInitializeMethod::OriginData);
     if (false == _bResult)
@@ -206,7 +253,7 @@ int main(int argc, char *argv[])
     }
 
     int Iteration;
-    for (Iteration = 0; Iteration < 2000; Iteration++)
+    for (Iteration = 0; Iteration < 100000; Iteration++)
     {
         bool Run = _FCM.Run();
 
@@ -238,7 +285,10 @@ int main(int argc, char *argv[])
     }
     cout << endl;
 
-    _bResult = csv_write(_OutputFileName, _Data, _DataCluster, _kCluster);
+    double* _pCenter = _FCM.GetCenter();
+    vector<double> _Center(_pCenter, _pCenter + sizeof(double) * _kCluster * _Dimension);
+
+    _bResult = csv_write(_OutputFileName, _Center, _Data, _DataCluster, _kCluster);
     if (false == _bResult)
     {
         cout << "Create Failed" << endl;

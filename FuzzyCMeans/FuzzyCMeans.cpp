@@ -85,7 +85,7 @@ public:
             return false;
         }
 
-        if (0.0 >= Epsilon)
+        if (0.0 > Epsilon)
         {
             return false;
         }
@@ -152,28 +152,9 @@ public:
         return m_pDataCluster[DataIndex];
     }
 
-    // Useless
-    bool IsSameCenter()
+    double* GetCenter()
     {
-        for (int OuterClusterIndex = 0; OuterClusterIndex < m_kCluster; OuterClusterIndex++)
-        {
-            for (int InnerClusterIndex = OuterClusterIndex + 1; InnerClusterIndex < m_kCluster; InnerClusterIndex++)
-            {
-                double Distance = 0.0;
-                for (int DimensionIndex = 0; DimensionIndex < m_Dimension; DimensionIndex++)
-                {
-                    Distance += pow(m_pCenter[OuterClusterIndex + DimensionIndex] - m_pCenter[InnerClusterIndex + DimensionIndex], 2.0);
-                }
-                Distance = sqrt(Distance);
-
-                if (Distance < pow(10.0, -5.0))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return bool(*this) ? m_pCenter.get() : nullptr;
     }
 
 private:
@@ -425,4 +406,9 @@ bool FuzzyCMeans::Run()
 int FuzzyCMeans::GetDataCluster(int DataIndex)
 {
     return pImpl->GetDataCluster(DataIndex);
+}
+
+double * FuzzyCMeans::GetCenter()
+{
+    return pImpl->GetCenter();
 }
