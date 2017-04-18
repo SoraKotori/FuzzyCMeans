@@ -17,7 +17,7 @@ using namespace std;
 using namespace std::experimental::filesystem;
 
 template<typename _FileName, typename _Ty, typename _Size>
-bool csv_read(_FileName&& __filename, vector<_Ty>& __data, _Size& __dimension, _Size& __data_count);
+bool csv_read(_FileName&& __filename, vector<_Ty>& __data, _Size& __dimension, _Size& __data_count, _Size __kcluster);
 
 template<typename _FileName, typename _Ty, typename _Size>
 bool csv_write(const _FileName& __filename, const vector<_Ty>& _Center, const vector<_Ty>& _Data, const vector<_Size>& _DataCluster);
@@ -86,6 +86,7 @@ auto csvDistance(const vector<_Ty>& _Center, const vector<_Ty>& _Data, const vec
 
 	return move(_Distance);
 }
+
 int main(int argc, char *argv[])
 {
 	if (6 != argc)
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
 	int _Dimension;
 	int _DataSize;
 
-	bool _bResult = csv_read(_FileName, _Data, _Dimension, _DataSize);
+	bool _bResult = csv_read(_FileName, _Data, _Dimension, _DataSize, _kCluster);
 	if (false == _bResult)
 	{
 		return EXIT_FAILURE;
@@ -165,11 +166,16 @@ public:
 };
 
 template<typename _FileName, typename _Ty, typename _Size>
-bool csv_read(_FileName&& __filename, vector<_Ty>& __data, _Size& __dimension, _Size& __data_count)
+bool csv_read(_FileName&& __filename, vector<_Ty>& __data, _Size& __dimension, _Size& __data_count, _Size __kcluster)
 {
 	typedef typename vector<_Ty>::size_type size_type;
 
-	csv_ifstream __file(forward<_FileName>(__filename));
+    string _Directories;
+    getline(istringstream(__filename), _Directories, '.');
+    path _Directories2(_Directories);
+
+    _Directories2 = _Directories2 / to_string(__kcluster) / __filename;
+	csv_ifstream __file(_Directories2);
 	if (!__file)
 	{
 		return false;
